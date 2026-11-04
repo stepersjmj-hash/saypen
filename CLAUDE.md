@@ -32,6 +32,10 @@ const inp=document.getElementById('file'); inp.files=dt.files; inp.dispatchEvent
   입력창 안의 click/dblclick/mousedown/keydown 은 stopPropagation 으로 재생·단축키와 분리.
 - 구조 분석은 세계지도 세이맵 파일 1개 기준. 다른 .pin 은 추출 안 될 수 있음.
 - 테이블 영역은 암호화되어 해석하지 않음 → 스티커 ↔ 음원 매칭 정보 없음.
+- `index.html` 을 file:// 로 열고 받은 ZIP은 `Zone.Identifier` 가 `ZoneId=4`(제한된 사이트)로 붙어
+  탐색기가 압축 해제를 막는다. 해결: `Unblock-File <zip>` 또는 속성 → 차단 해제.
+  https(GitHub Pages)로 열고 받으면 이 문제가 없도록 Pages 주소 사용을 권장.
+- 저장소는 Pages 때문에 공개(public) 상태 — 음원·.pin 같은 저작물은 절대 커밋하지 않는다.
 
 ## 관례
 - 텍스트 파일은 BOM 없는 UTF-8, UI 문구·주석은 한국어

@@ -4,8 +4,10 @@
 설치 없이 브라우저에서 바로 쓰며, 파일은 어디로도 전송되지 않습니다.
 
 ## 접속
-- 웹: https://stepersjmj-hash.github.io/saypen/ (GitHub Pages 설정 후)
+- 웹: https://stepersjmj-hash.github.io/saypen/ ← 이 주소로 쓰는 것을 권장
 - 또는 `index.html` 을 내려받아 크롬·엣지로 열기
+  - 이렇게 PC 파일로 열고 받은 ZIP은 Windows가 "인터넷 보안 설정으로 인해 파일을 복사할 수 없습니다"
+    라며 막습니다. ZIP 오른쪽 클릭 → 속성 → **차단 해제** 체크 후 압축을 푸세요.
 
 ## 사용법
 1. `.pin` 파일을 화면에 끌어다 놓거나 클릭해서 선택 (예: `세계지도세이맵_64203_bk.pin`)
