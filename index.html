@@ -8,7 +8,7 @@
   :root{--bg:#f6f4ee;--card:#fff;--ink:#1f2430;--muted:#7a8190;--accent:#2f6fed;--accent2:#e8f0ff;--line:#e3e1da;--ok:#16a34a;--warn:#b45309}
   *{box-sizing:border-box}
   body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
-  .wrap{max-width:960px;margin:0 auto;padding:28px 20px 80px}
+  .wrap{max-width:960px;margin:0 auto;padding:28px 20px 200px}
   h1{font-size:24px;margin:0 0 6px}
   .sub{color:var(--muted);margin:0 0 22px;font-size:14px;line-height:1.5}
   #drop{border:2px dashed #c9c6bd;border-radius:14px;background:var(--card);padding:40px 20px;text-align:center;cursor:pointer;transition:.15s}
@@ -25,8 +25,17 @@
   progress{width:100%;height:8px;margin-top:10px;display:none}
   .info{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:18px;font-size:14px;display:none;line-height:1.7}
   .info b{color:var(--accent)}
-  #now{display:none;align-items:center;gap:12px;margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:14px}
-  #now audio{flex:1;height:36px}
+  /* 우하단에 떠 있는 패널: 선택 바 + 플레이어 */
+  #dock{position:fixed;right:20px;bottom:20px;z-index:50;width:min(380px,calc(100vw - 40px));display:flex;flex-direction:column;gap:8px}
+  #dock>div{display:none;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px 8px 14px;box-shadow:0 8px 28px rgba(0,0,0,.16);font-size:14px}
+  #selbar{align-items:center;gap:6px;border-color:var(--accent)!important}
+  #selbar #seltxt{flex:1;font-weight:600;color:var(--accent)}
+  #selbar button,#now .x{padding:6px 10px;font-size:13px}
+  #now{flex-direction:column;gap:6px}
+  #now .row{display:flex;align-items:center;gap:8px}
+  #nowtxt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  #now .x{border:none;background:transparent;color:var(--muted);font-size:16px;padding:2px 6px}
+  #now audio{width:100%;height:36px}
   #list{margin-top:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
   .item{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:14px}
   .item:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
@@ -39,6 +48,9 @@
   .item .del{flex-shrink:0;margin-left:6px;padding:0;width:22px;height:22px;line-height:20px;border:none;border-radius:50%;background:transparent;color:var(--muted);font-size:16px;opacity:.35}
   .item:hover .del{opacity:1} .item .del:hover{background:#fee2e2;color:#dc2626}
   .item.deleted{display:none}
+  .item{user-select:none;scroll-margin-bottom:190px}
+  .item.sel{border-color:var(--accent);background:var(--accent2)}
+  #delsel{border-color:#fca5a5;color:#dc2626;font-weight:600}
   details{margin-top:28px;font-size:13px;color:var(--muted)}
   details p{line-height:1.6;margin:8px 0}
 </style>
@@ -62,10 +74,14 @@
     <button class="primary" id="dl" disabled>ZIP으로 저장</button>
     <button id="play" disabled>처음부터 연속 재생</button>
     <button id="undo" disabled>삭제 되돌리기</button>
+    <button id="selall" disabled>전체 선택</button>
     <button id="reset" disabled>다른 파일</button>
   </div>
 
-  <div id="now"><span id="nowtxt"></span><audio id="player" controls preload="none"></audio></div>
+  <div id="dock">
+    <div id="selbar"><span id="seltxt"></span><button id="delsel">선택 삭제</button><button id="selall2">전체 선택</button><button id="selnone">해제</button></div>
+    <div id="now"><div class="row"><span id="nowtxt"></span><button class="x" id="nowclose" title="재생 멈추고 닫기">×</button></div><audio id="player" controls preload="none"></audio></div>
+  </div>
   <div id="list"></div>
 
   <details>
@@ -81,8 +97,8 @@
 (function(){
   const $ = id => document.getElementById(id);
   const drop=$('drop'), fileIn=$('file'), status=$('status'), prog=$('prog'), info=$('info');
-  const dlBtn=$('dl'), playBtn=$('play'), resetBtn=$('reset'), undoBtn=$('undo'), list=$('list'), now=$('now'), nowtxt=$('nowtxt'), player=$('player');
-  let segs=[], names=[], durs=[], deleted=[], delStack=[], meta=null, baseName='pin', cur=-1, urls=[], downloads=null, zipBlob=null;
+  const dlBtn=$('dl'), playBtn=$('play'), resetBtn=$('reset'), undoBtn=$('undo'), delselBtn=$('delsel'), selallBtn=$('selall'), selbar=$('selbar'), seltxt=$('seltxt'), list=$('list'), now=$('now'), nowtxt=$('nowtxt'), player=$('player');
+  let segs=[], names=[], durs=[], deleted=[], delStack=[], meta=null, sel=new Set(), anchor=-1, baseName='pin', cur=-1, urls=[], downloads=null, zipBlob=null;
 
   if(window.claude && typeof claude.use==='function'){
     claude.use('downloads').then(d=>{ downloads=d; }).catch(()=>{});
@@ -172,7 +188,7 @@
     segs.forEach((s,i)=>{
       const el=document.createElement('div'); el.className='item';
       el.innerHTML=`<span class="num"></span><span class="sz" title="${fmt(s.length)}">${fmtDur(durs[i])}</span><button class="del" title="목록에서 삭제 (ZIP에서 빠짐)">×</button>`;
-      el.addEventListener('click',()=>play(i));
+      el.addEventListener('click',e=>onItemClick(e,i));
       el.querySelector('.del').addEventListener('click',e=>{ e.stopPropagation(); removeItem(i); });
       el.querySelector('.num').addEventListener('dblclick',e=>{ e.stopPropagation(); startRename(i); });
       list.appendChild(el);
@@ -232,23 +248,65 @@
   function updateInfo(){
     const idx=alive(), n=idx.length, del=segs.length-n;
     const size=idx.reduce((s,i)=>s+segs[i].length,0), dur=idx.reduce((s,i)=>s+durs[i],0);
-    info.innerHTML=`<b>${meta.name}</b> — 음원 <b>${n}개</b>${del?` · ${del}개 삭제함`:' 발견'} (총 ${fmtDur(dur)}, ${fmt(size)}, 헤더 테이블 영역 ${fmt(meta.table)}, ${meta.mode})<br>목록을 클릭하면 미리 들을 수 있고, 파일명을 더블클릭하면 이름을 바꾸고, ×를 누르면 삭제합니다.`;
+    info.innerHTML=`<b>${meta.name}</b> — 음원 <b>${n}개</b>${del?` · ${del}개 삭제함`:' 발견'} (총 ${fmtDur(dur)}, ${fmt(size)}, 헤더 테이블 영역 ${fmt(meta.table)}, ${meta.mode})<br>목록을 클릭하면 미리 들을 수 있고, 파일명을 더블클릭하면 이름을 바꾸고, ×를 누르면 삭제합니다.<br>Shift+클릭으로 범위, Ctrl+클릭으로 하나씩, "전체 선택"(Ctrl+A)으로 모두 골라 오른쪽 아래 "선택 삭제"(Delete 키)로 한 번에 지웁니다. Esc는 선택 해제.`;
     dlBtn.disabled=!n; playBtn.disabled=!n;
+    selallBtn.disabled=!n;
     undoBtn.disabled=!delStack.length; undoBtn.textContent='삭제 되돌리기'+(delStack.length?' ('+delStack.length+')':'');
   }
-  function removeItem(i){
-    if(deleted[i]) return;
-    const ed=list.children[i].querySelector('.edit'); if(ed) ed._finish(false);
-    if(i===cur){ player.pause(); list.children[i].classList.remove('playing'); now.style.display='none'; cur=-1; }
-    deleted[i]=true; delStack.push(i); zipBlob=null;
-    list.children[i].classList.add('deleted');
-    updateInfo(); setStatus(names[i]+' 삭제함 — "삭제 되돌리기"로 복구할 수 있습니다.');
+  // 여러 개를 한 번에 지우면 되돌리기도 한 번에 (delStack 의 한 칸 = 한 번에 지운 묶음)
+  function removeItems(arr){
+    arr=arr.filter(i=>!deleted[i]).sort((a,b)=>a-b);
+    if(!arr.length) return;
+    for(const i of arr){
+      const ed=list.children[i].querySelector('.edit'); if(ed) ed._finish(false);
+      if(i===cur){ player.pause(); list.children[i].classList.remove('playing'); now.style.display='none'; cur=-1; }
+      deleted[i]=true; sel.delete(i); list.children[i].classList.add('deleted');
+    }
+    delStack.push(arr); zipBlob=null;
+    renderSel(); updateInfo();
+    setStatus((arr.length===1? names[arr[0]] : arr.length+'개')+' 삭제함 — "삭제 되돌리기"로 복구할 수 있습니다.');
   }
+  const removeItem=i=>removeItems([i]);
   undoBtn.addEventListener('click',()=>{
-    const i=delStack.pop(); if(i===undefined) return;
-    deleted[i]=false; zipBlob=null;
-    list.children[i].classList.remove('deleted'); list.children[i].scrollIntoView({block:'nearest'});
-    updateInfo(); setStatus(names[i]+' 되돌림','ok');
+    const g=delStack.pop(); if(!g) return;
+    g.forEach(i=>{ deleted[i]=false; list.children[i].classList.remove('deleted'); });
+    zipBlob=null; list.children[g[0]].scrollIntoView({block:'nearest'});
+    updateInfo(); setStatus((g.length===1? names[g[0]] : g.length+'개')+' 되돌림','ok');
+  });
+
+  // ---- 여러 개 선택: 클릭 = 재생, Shift+클릭 = 범위, Ctrl(⌘)+클릭 = 하나씩 추가/빼기 ----
+  function renderSel(){
+    [...list.children].forEach((el,i)=>el.classList.toggle('sel',sel.has(i)));
+    selbar.style.display=sel.size?'flex':'none';
+    seltxt.textContent=sel.size+'개 선택';
+    delselBtn.textContent=sel.size+'개 삭제';
+  }
+  function onItemClick(e,i){
+    const add=e.ctrlKey||e.metaKey;
+    if(e.shiftKey && anchor>=0 && !deleted[anchor]){
+      if(!add) sel.clear();
+      const lo=Math.min(anchor,i), hi=Math.max(anchor,i);
+      for(let k=lo;k<=hi;k++) if(!deleted[k]) sel.add(k);
+      renderSel(); return;
+    }
+    if(add||e.shiftKey){ sel.has(i)? sel.delete(i) : sel.add(i); anchor=i; renderSel(); return; }
+    sel.clear(); anchor=i; renderSel(); play(i);
+  }
+  delselBtn.addEventListener('click',()=>removeItems([...sel]));
+  const selectAll=()=>{ alive().forEach(i=>sel.add(i)); renderSel(); };
+  selallBtn.addEventListener('click',selectAll);
+  $('selall2').addEventListener('click',selectAll);
+  $('selnone').addEventListener('click',()=>{ sel.clear(); renderSel(); });
+  $('nowclose').addEventListener('click',()=>{
+    playBtn.dataset.cont='0'; player.pause();
+    if(cur>=0) list.children[cur].classList.remove('playing');
+    cur=-1; now.style.display='none';
+  });
+  document.addEventListener('keydown',e=>{
+    if(!segs.length || /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+    if(e.key==='Delete' && sel.size){ e.preventDefault(); removeItems([...sel]); }
+    else if(e.key==='Escape' && sel.size){ sel.clear(); renderSel(); }
+    else if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='a'){ e.preventDefault(); selectAll(); }
   });
   // ZIP 안에서 이름이 겹치면 " (2)" 등을 붙여 덮어쓰기 방지
   function zipNames(idx){
@@ -314,9 +372,9 @@
   });
 
   function reset(full){
-    urls.forEach(u=>u&&URL.revokeObjectURL(u)); urls=[]; segs=[]; names=[]; durs=[]; deleted=[]; delStack=[]; meta=null; cur=-1; zipBlob=null;
+    urls.forEach(u=>u&&URL.revokeObjectURL(u)); urls=[]; segs=[]; names=[]; durs=[]; deleted=[]; delStack=[]; meta=null; sel.clear(); anchor=-1; selbar.style.display='none'; cur=-1; zipBlob=null;
     list.innerHTML=''; info.style.display='none'; now.style.display='none'; player.removeAttribute('src');
-    dlBtn.disabled=true; playBtn.disabled=true; resetBtn.disabled=true; undoBtn.disabled=true; undoBtn.textContent='삭제 되돌리기'; playBtn.dataset.cont='0';
+    dlBtn.disabled=true; playBtn.disabled=true; resetBtn.disabled=true; selallBtn.disabled=true; undoBtn.disabled=true; undoBtn.textContent='삭제 되돌리기'; playBtn.dataset.cont='0';
     if(full){ setStatus(''); prog.style.display='none'; }
   }
   resetBtn.addEventListener('click',()=>reset(true));

@@ -17,7 +17,14 @@
   `startRename(i)` 인라인 입력 (Enter/포커스 이탈 = 저장, Esc = 취소, 빈칸 = 번호로 복귀)
 - `deleted[]`·`delStack` — × 로 삭제하면 DOM 은 지우지 않고 `.deleted`(display:none)만 붙인다.
   `list.children[i]` ↔ 인덱스 대응을 유지하기 위해서. `alive()` 가 남은 인덱스, ZIP·`updateInfo`·
-  `play()`(삭제 항목 건너뜀)가 이를 따른다. 되돌리기는 스택(역순). 재생 중인 항목을 지우면 재생 정지
+  `play()`(삭제 항목 건너뜀)가 이를 따른다. 재생 중인 항목을 지우면 재생 정지.
+  `delStack` 의 한 칸 = 한 번에 지운 인덱스 배열 → 되돌리기도 묶음 단위. 단일 × 도 `removeItems([i])`
+- `sel`(Set)·`anchor` — `onItemClick`: 클릭 = 재생+선택 해제+기준점, Shift+클릭 = 기준점~여기 범위(삭제 항목 제외),
+  Ctrl/⌘+클릭 = 토글. Delete 키 = 선택 삭제, Esc = 해제 (입력창 포커스 중엔 무시). `.item` 은 user-select:none
+  (Shift+클릭 시 글자 드래그 선택 방지). 전체 선택 = 상단 `#selall`·선택 바 `#selall2`·Ctrl/⌘+A
+- `#dock` — 우하단 position:fixed 패널. 안에 `#selbar`(선택 있을 때) + `#now`(재생 중) 를 쌓는다.
+  `#dock>div` 기본 display:none → JS 가 inline `flex` 로 켬. 패널에 목록 끝이 가리지 않게 `.wrap` 아래 여백 200px,
+  `.item{scroll-margin-bottom}` 으로 scrollIntoView 시 패널 위로 오게 함. `#nowclose` = 재생 정지+연속 재생 해제+닫기
 - `cleanName` — `\ / : * ? " < > |`·제어문자 제거, 끝 `.mp3`·점·공백 제거
 - `zipNames()` — ZIP 안 이름 중복 시 ` (2)` 붙임 (대소문자 무시)
 - `buildZip` — 무압축(STORE) ZIP 직접 생성, UTF-8 파일명 플래그(0x0800)
