@@ -1,0 +1,16 @@
+{
+  "name": "세이펜 추출기",
+  "short_name": "세이펜",
+  "description": "세이펜 .pin 파일에서 MP3 음원을 꺼내 미리 듣고 이름을 바꿔 ZIP으로 저장",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f4ee",
+  "theme_color": "#2f6fed",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
