@@ -27,7 +27,7 @@
   .info b{color:var(--accent)}
   #now{display:none;align-items:center;gap:12px;margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:14px}
   #now audio{flex:1;height:36px}
-  #list{margin-top:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  #list{margin-top:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
   .item{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:14px}
   .item:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
   .item.playing{border-color:var(--ok);background:#f0fdf4}
@@ -78,13 +78,42 @@
   const $ = id => document.getElementById(id);
   const drop=$('drop'), fileIn=$('file'), status=$('status'), prog=$('prog'), info=$('info');
   const dlBtn=$('dl'), playBtn=$('play'), resetBtn=$('reset'), list=$('list'), now=$('now'), nowtxt=$('nowtxt'), player=$('player');
-  let segs=[], names=[], baseName='pin', cur=-1, urls=[], downloads=null, zipBlob=null;
+  let segs=[], names=[], durs=[], baseName='pin', cur=-1, urls=[], downloads=null, zipBlob=null;
 
   if(window.claude && typeof claude.use==='function'){
     claude.use('downloads').then(d=>{ downloads=d; }).catch(()=>{});
   }
 
   const pad=n=>String(n).padStart(4,'0');
+  const fmtDur=s=>{ s=Math.round(s); const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=String(s%60).padStart(2,'0'); return h? h+':'+String(m).padStart(2,'0')+':'+x : m+':'+x; };
+
+  // ---- MP3 재생 시간: 프레임 헤더를 끝까지 세어 계산 (CBR·VBR 모두 정확) ----
+  const BR={ '1-1':[0,32,64,96,128,160,192,224,256,288,320,352,384,416,448],
+             '1-2':[0,32,48,56,64,80,96,112,128,160,192,224,256,320,384],
+             '1-3':[0,32,40,48,56,64,80,96,112,128,160,192,224,256,320],
+             '2-1':[0,32,48,56,64,80,96,112,128,144,160,176,192,224,256],
+             '2-2':[0,8,16,24,32,40,48,56,64,80,96,112,128,144,160] };
+  const SR={3:[44100,48000,32000],2:[22050,24000,16000],0:[11025,12000,8000]}; // 3=MPEG1, 2=MPEG2, 0=MPEG2.5
+  function mp3Duration(u){
+    let p=0;
+    if(u[0]===0x49&&u[1]===0x44&&u[2]===0x33){                 // ID3v2 태그 건너뛰기
+      p=10+((u[6]&0x7f)<<21|(u[7]&0x7f)<<14|(u[8]&0x7f)<<7|(u[9]&0x7f));
+      if(u[5]&0x10) p+=10;
+    }
+    let sec=0;
+    while(p+4<=u.length){
+      const b1=u[p+1], b2=u[p+2];
+      if(u[p]!==0xFF||(b1&0xE0)!==0xE0){ p++; continue; }
+      const ver=(b1>>3)&3, lay=4-((b1>>1)&3), bri=b2>>4, sri=(b2>>2)&3, padd=(b2>>1)&1;
+      if(ver===1||lay===4||bri===0||bri===15||sri===3){ p++; continue; }
+      const v1=ver===3, br=BR[(v1?'1':'2')+'-'+(v1?lay:(lay===1?1:2))][bri]*1000, sr=SR[ver][sri];
+      const spf= lay===1?384 : (lay===3&&!v1)?576 : 1152;
+      const len= lay===1? (Math.floor(12*br/sr)+padd)*4 : Math.floor(spf/8*br/sr)+padd;
+      if(p+len>u.length) break;
+      sec+=spf/sr; p+=len;
+    }
+    return sec;
+  }
   const fmt=b=> b>=1048576? (b/1048576).toFixed(1)+' MB' : b>=1024? (b/1024).toFixed(0)+' KB' : b+' B';
   function setStatus(t,cls){ status.textContent=t; status.className=cls||''; }
 
@@ -130,13 +159,15 @@
     prog.value=90; await tick();
 
     const total=segs.reduce((s,x)=>s+x.length,0);
+    durs=segs.map(mp3Duration);
+    const totalDur=durs.reduce((s,x)=>s+x,0);
     info.style.display='block';
-    info.innerHTML=`<b>${file.name}</b> — 음원 <b>${segs.length}개</b> 발견 (총 ${fmt(total)}, 헤더 테이블 영역 ${fmt(starts[0])}, ${mode})<br>목록을 클릭하면 미리 들을 수 있고, 파일명을 더블클릭하면 이름을 바꿀 수 있습니다.`;
+    info.innerHTML=`<b>${file.name}</b> — 음원 <b>${segs.length}개</b> 발견 (총 ${fmtDur(totalDur)}, ${fmt(total)}, 헤더 테이블 영역 ${fmt(starts[0])}, ${mode})<br>목록을 클릭하면 미리 들을 수 있고, 파일명을 더블클릭하면 이름을 바꿀 수 있습니다.`;
     list.innerHTML='';
     names=segs.map((s,i)=>pad(i+1));
     segs.forEach((s,i)=>{
       const el=document.createElement('div'); el.className='item';
-      el.innerHTML=`<span class="num"></span><span class="sz">${fmt(s.length)}</span>`;
+      el.innerHTML=`<span class="num"></span><span class="sz" title="${fmt(s.length)}">${fmtDur(durs[i])}</span>`;
       el.addEventListener('click',()=>play(i));
       el.querySelector('.num').addEventListener('dblclick',e=>{ e.stopPropagation(); startRename(i); });
       list.appendChild(el);
@@ -152,7 +183,7 @@
     if(cur>=0) list.children[cur].classList.remove('playing');
     cur=i; list.children[i].classList.add('playing');
     if(!urls[i]) urls[i]=URL.createObjectURL(new Blob([segs[i]],{type:'audio/mpeg'}));
-    now.style.display='flex'; nowtxt.textContent='▶ '+names[i];
+    now.style.display='flex'; nowtxt.textContent='▶ '+names[i]+' ('+fmtDur(durs[i])+')';
     player.src=urls[i]; player.play().catch(()=>{});
     list.children[i].scrollIntoView({block:'nearest'});
   }
@@ -161,7 +192,7 @@
     const sp=list.children[i].querySelector('.num');
     sp.textContent=names[i]; sp.title=names[i]+'.mp3 (더블클릭해서 이름 바꾸기)';
     sp.classList.toggle('renamed', names[i]!==pad(i+1));
-    if(i===cur) nowtxt.textContent='▶ '+names[i];
+    if(i===cur) nowtxt.textContent='▶ '+names[i]+' ('+fmtDur(durs[i])+')';
   }
   // 윈도우·맥에서 파일명에 못 쓰는 문자 제거, 끝의 .mp3 는 자동으로 붙이므로 떼어냄
   const cleanName=s=>s.replace(/[\\/:*?"<>|\x00-\x1f]/g,'').replace(/\.mp3$/i,'').trim().replace(/[. ]+$/,'');
@@ -254,7 +285,7 @@
   });
 
   function reset(full){
-    urls.forEach(u=>u&&URL.revokeObjectURL(u)); urls=[]; segs=[]; names=[]; cur=-1; zipBlob=null;
+    urls.forEach(u=>u&&URL.revokeObjectURL(u)); urls=[]; segs=[]; names=[]; durs=[]; cur=-1; zipBlob=null;
     list.innerHTML=''; info.style.display='none'; now.style.display='none'; player.removeAttribute('src');
     dlBtn.disabled=true; playBtn.disabled=true; resetBtn.disabled=true; playBtn.dataset.cont='0';
     if(full){ setStatus(''); prog.style.display='none'; }
