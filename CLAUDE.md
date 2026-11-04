@@ -14,7 +14,9 @@
   MPEG2(22.05kHz 등) Layer III 는 프레임당 576샘플 — 세계지도 파일에 섞여 있음. 실제 584개를 ffmpeg 디코딩과
   비교해 오차 1프레임(0.026초) 이내 확인. ffprobe 의 format duration 은 비트레이트 추정이라 비교 기준으로 쓰면 안 됨
 - `names[]` — 각 음원의 파일명(확장자 제외). 기본값 `0001` 형식. 목록 `.num` 더블클릭 →
-  `startRename(i)` 인라인 입력 (Enter/포커스 이탈 = 저장, Esc = 취소, 빈칸 = 번호로 복귀)
+  `startRename(i, sp)` 인라인 입력 (Enter/포커스 이탈 = 저장, Esc = 취소, 빈칸 = 번호로 복귀).
+  `sp` = 입력창과 바꿔 끼울 요소 — 기본은 목록 `.num`, 플레이어에선 `#nowtxt`(더블클릭·`#nowren` ✎).
+  열린 입력창은 `.edit` 에 `_finish` 가 붙어 있어 ZIP 저장·삭제·닫기 때 `document.querySelectorAll('.edit')` 로 확정/취소
 - `deleted[]`·`delStack` — × 로 삭제하면 DOM 은 지우지 않고 `.deleted`(display:none)만 붙인다.
   `list.children[i]` ↔ 인덱스 대응을 유지하기 위해서. `alive()` 가 남은 인덱스, ZIP·`updateInfo`·
   `play()`(삭제 항목 건너뜀)가 이를 따른다. 재생 중인 항목을 지우면 재생 정지.
