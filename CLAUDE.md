@@ -18,7 +18,7 @@
 - `body.loaded` 유무로 두 상태를 전환. 없으면 `#intro`(드롭 영역·진행바·설명), 있으면 `.app`(워크벤치) + `#pbar`
 - `.top` 상단바: `.brand`(로고: `.logo` 안 `<i>` 3개 = 막대, 3번째는 초록) · `.chip`(파일명·용량) · `#theme` · `#reset` · `#dl`
   - `.chip`·`#reset`·`#dl` 은 `body:not(.loaded)` 에서 숨김
-- `aside`: `.filter[data-v]`(all/unnamed/named/deleted) + 개수(`#cAll` `#cUn` `#cNamed` `#cDel`) · 파일 정보(`#iDur` `#iSize` `#iTable` `#iMode`) · `.keys`
+- `aside`: `.filter[data-v]`(all/unnamed/named/deleted) + 개수(`#cAll` `#cUn` `#cNamed` `#cDel`) · 길이로 선택(`#durMax` `#durSel` `#durHint`) · 파일 정보(`#iDur` `#iSize` `#iTable` `#iMode`) · `.keys`
 - `.main`: `.toolbar`(`#play` `#undo` `#selall` `#status2` `#selbar`) · `.thead` · `#list` · `#nores`
 - `#pbar` 하단 플레이어: `#prev` `#pp` `#next` · `#nowtxt` `#nowren` `#nowsub` · `#track`/`#fill` · `#tcur` `#tdur` · `#nowclose`.
   `<audio id="player">` 는 숨김 — 컨트롤은 전부 직접 그림
@@ -55,6 +55,9 @@
   Ctrl/⌘+클릭·`.ck` 클릭 = 토글. 삭제 항목 클릭은 `play(i,1,true)`(강제 재생, 미리 듣기만).
   Delete 키 = 선택 삭제, Esc = 해제 (입력창 포커스 중엔 무시). `.item` 은 user-select:none.
   전체 선택(`#selall`·`#ckall`·Ctrl/⌘+A) = 지금 보기에서 보이는 항목만. `#selbar` 가 보이면 `#status2` 는 숨김
+- 길이로 선택 — `selectByDur()`: `parseDur`(`10`·`10초` = 초, `1:30` = 분:초)로 읽어, 지금 보기에 보이는 남은 항목 중
+  `Math.round(durs[i]) <= v` 인 것으로 선택을 **바꿈**(추가 아님). 표에 보이는 값(반올림)과 같게 비교 — 0:10 으로 보이면 10 이하에 포함.
+  선택되면 입력창 blur — 포커스가 입력창에 남으면 전역 keydown 이 INPUT 을 무시해 Delete 가 안 먹음. 삭제됨 보기에선 막음
 - 재생 — `play(i, dir=1, force=false)`: `nextAlive(i,dir)` 로 삭제 항목을 건너뜀. `cont` = 연속 재생 상태
   (`#play` 로 켜고 `#nowclose` 로 끔, 일시정지로는 꺼지지 않음). `ended` → `cont` 면 다음 음원.
   `#prev` 는 2초 넘게 재생했으면 처음으로, 아니면 이전 음원. `#track` 클릭 = 탐색.

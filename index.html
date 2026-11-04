@@ -78,6 +78,13 @@
   .filter span{font-variant-numeric:tabular-nums;font-size:13px}
   .kv{display:flex;justify-content:space-between;gap:8px;font-size:13px}
   .kv span:first-child{color:var(--muted)} .kv span:last-child{font-weight:600;text-align:right}
+  .durpick{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+  .durpick input{flex:1;min-width:0;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;font-size:13px;outline:none}
+  .durpick input:focus{border-color:var(--accent)}
+  .durpick input.bad{border-color:var(--danger)}
+  .durpick button{padding:7px 12px;font-size:13px}
+  .hint{font-size:12px;color:var(--muted);line-height:1.4}
+  .hint.ok{color:var(--ok)} .hint.warn{color:var(--warn)}
   .keys{margin-top:auto;display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
   .keys b{color:var(--ink)}
   .keys div{display:flex;justify-content:space-between;gap:8px}
@@ -181,6 +188,11 @@
       <div class="filter" data-v="unnamed">이름 없음<span id="cUn">0</span></div>
       <div class="filter" data-v="named">이름 붙임<span id="cNamed">0</span></div>
       <div class="filter" data-v="deleted">삭제됨<span id="cDel">0</span></div>
+    </div>
+    <div class="sec">
+      <div class="h">길이로 선택</div>
+      <div class="durpick"><input id="durMax" type="text" inputmode="decimal" placeholder="예: 10 또는 1:30" title="초 단위 숫자 또는 분:초"><span>이하</span><button id="durSel">선택</button></div>
+      <div class="hint" id="durHint">입력한 시간 이하인 음원을 모두 선택합니다</div>
     </div>
     <div class="sec">
       <div class="h">파일 정보</div>
@@ -521,6 +533,31 @@
   delselBtn.addEventListener('click',()=>removeItems([...sel]));
   const selectAll=()=>{ if(view==='deleted') return; alive().filter(visible).forEach(i=>sel.add(i)); renderSel(); };
   selallBtn.addEventListener('click',selectAll);
+
+  // ---- 길이로 선택: 입력한 시간 이하인 음원을 모두 선택 (지금 보기에 보이는 것 중에서) ----
+  // "10" = 10초, "1:30" = 90초. 비교는 표에 보이는 값(반올림한 초)과 같게 해서 0:10 으로 보이는 건 10초 이하에 들어감
+  const durMax=$('durMax'), durHint=$('durHint');
+  const parseDur=t=>{
+    t=t.trim().replace(/초$/,'').trim(); if(!t) return NaN;
+    const m=t.match(/^(\d+):(\d{1,2}(?:\.\d+)?)$/);
+    if(m) return +m[1]*60 + +m[2];
+    return /^\d+(\.\d+)?$/.test(t)? +t : NaN;
+  };
+  const durHintSet=(t,cls)=>{ durHint.textContent=t; durHint.className='hint'+(cls?' '+cls:''); };
+  function selectByDur(){
+    if(!segs.length) return;
+    const v=parseDur(durMax.value);
+    durMax.classList.toggle('bad', isNaN(v));
+    if(isNaN(v)){ durHintSet('초(예: 10) 또는 분:초(예: 1:30)로 입력하세요','warn'); return; }
+    if(view==='deleted'){ durHintSet('삭제됨 보기에서는 선택할 수 없습니다','warn'); return; }
+    const hit=alive().filter(i=>visible(i) && Math.round(durs[i])<=v);
+    sel=new Set(hit); anchor=hit.length? hit[0] : anchor; renderSel();
+    if(hit.length){ revealRow(hit[0]); durMax.blur(); }   // 입력창에서 빠져야 Delete 키가 음원 삭제로 동작
+    durHintSet(fmtDur(v)+' 이하 '+hit.length+'개 선택'+(hit.length? ' — Delete 로 삭제' : ''), hit.length?'ok':'');
+  }
+  $('durSel').addEventListener('click',selectByDur);
+  durMax.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); selectByDur(); } });
+  durMax.addEventListener('input',()=>durMax.classList.remove('bad'));
   ckall.addEventListener('click',()=>{ if(ckall.classList.contains('all')){ sel.clear(); renderSel(); } else selectAll(); });
   $('selnone').addEventListener('click',()=>{ sel.clear(); renderSel(); });
   document.addEventListener('keydown',e=>{
@@ -603,6 +640,7 @@
     list.innerHTML=''; selbar.style.display='none'; pbar.style.display='none'; player.pause(); player.removeAttribute('src');
     document.body.classList.remove('loaded');
     dlBtn.disabled=true; playBtn.disabled=true; selallBtn.disabled=true; undoBtn.disabled=true; undoBtn.textContent='삭제 되돌리기';
+    durHintSet('입력한 시간 이하인 음원을 모두 선택합니다'); durMax.classList.remove('bad');
     if(full){ setStatus(''); prog.style.display='none'; }
   }
   resetBtn.addEventListener('click',()=>reset(true));
