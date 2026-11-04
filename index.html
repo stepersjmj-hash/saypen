@@ -36,6 +36,9 @@
   .num.renamed{color:var(--ink)}
   .item .edit{flex:1;min-width:0;margin-right:6px;padding:2px 4px;font:inherit;font-weight:600;border:1px solid var(--accent);border-radius:5px;outline:none}
   .sz{font-size:12px;color:var(--muted);flex-shrink:0}
+  .item .del{flex-shrink:0;margin-left:6px;padding:0;width:22px;height:22px;line-height:20px;border:none;border-radius:50%;background:transparent;color:var(--muted);font-size:16px;opacity:.35}
+  .item:hover .del{opacity:1} .item .del:hover{background:#fee2e2;color:#dc2626}
+  .item.deleted{display:none}
   details{margin-top:28px;font-size:13px;color:var(--muted)}
   details p{line-height:1.6;margin:8px 0}
 </style>
@@ -58,6 +61,7 @@
   <div class="bar">
     <button class="primary" id="dl" disabled>ZIP으로 저장</button>
     <button id="play" disabled>처음부터 연속 재생</button>
+    <button id="undo" disabled>삭제 되돌리기</button>
     <button id="reset" disabled>다른 파일</button>
   </div>
 
@@ -77,8 +81,8 @@
 (function(){
   const $ = id => document.getElementById(id);
   const drop=$('drop'), fileIn=$('file'), status=$('status'), prog=$('prog'), info=$('info');
-  const dlBtn=$('dl'), playBtn=$('play'), resetBtn=$('reset'), list=$('list'), now=$('now'), nowtxt=$('nowtxt'), player=$('player');
-  let segs=[], names=[], durs=[], baseName='pin', cur=-1, urls=[], downloads=null, zipBlob=null;
+  const dlBtn=$('dl'), playBtn=$('play'), resetBtn=$('reset'), undoBtn=$('undo'), list=$('list'), now=$('now'), nowtxt=$('nowtxt'), player=$('player');
+  let segs=[], names=[], durs=[], deleted=[], delStack=[], meta=null, baseName='pin', cur=-1, urls=[], downloads=null, zipBlob=null;
 
   if(window.claude && typeof claude.use==='function'){
     claude.use('downloads').then(d=>{ downloads=d; }).catch(()=>{});
@@ -158,17 +162,18 @@
     }
     prog.value=90; await tick();
 
-    const total=segs.reduce((s,x)=>s+x.length,0);
     durs=segs.map(mp3Duration);
-    const totalDur=durs.reduce((s,x)=>s+x,0);
+    deleted=segs.map(()=>false); delStack=[];
+    meta={name:file.name, table:starts[0], mode};
     info.style.display='block';
-    info.innerHTML=`<b>${file.name}</b> — 음원 <b>${segs.length}개</b> 발견 (총 ${fmtDur(totalDur)}, ${fmt(total)}, 헤더 테이블 영역 ${fmt(starts[0])}, ${mode})<br>목록을 클릭하면 미리 들을 수 있고, 파일명을 더블클릭하면 이름을 바꿀 수 있습니다.`;
+    updateInfo();
     list.innerHTML='';
     names=segs.map((s,i)=>pad(i+1));
     segs.forEach((s,i)=>{
       const el=document.createElement('div'); el.className='item';
-      el.innerHTML=`<span class="num"></span><span class="sz" title="${fmt(s.length)}">${fmtDur(durs[i])}</span>`;
+      el.innerHTML=`<span class="num"></span><span class="sz" title="${fmt(s.length)}">${fmtDur(durs[i])}</span><button class="del" title="목록에서 삭제 (ZIP에서 빠짐)">×</button>`;
       el.addEventListener('click',()=>play(i));
+      el.querySelector('.del').addEventListener('click',e=>{ e.stopPropagation(); removeItem(i); });
       el.querySelector('.num').addEventListener('dblclick',e=>{ e.stopPropagation(); startRename(i); });
       list.appendChild(el);
       showName(i);
@@ -179,6 +184,7 @@
   }
 
   function play(i){
+    while(i>=0 && i<segs.length && deleted[i]) i++;   // 삭제한 음원은 건너뜀
     if(i<0||i>=segs.length) return;
     if(cur>=0) list.children[cur].classList.remove('playing');
     cur=i; list.children[i].classList.add('playing');
@@ -221,10 +227,33 @@
     inp._finish=finish;
     ['click','dblclick','mousedown'].forEach(t=>inp.addEventListener(t,e=>e.stopPropagation()));
   }
+  // ---- 삭제 / 되돌리기 ----
+  const alive=()=>segs.map((s,i)=>i).filter(i=>!deleted[i]);
+  function updateInfo(){
+    const idx=alive(), n=idx.length, del=segs.length-n;
+    const size=idx.reduce((s,i)=>s+segs[i].length,0), dur=idx.reduce((s,i)=>s+durs[i],0);
+    info.innerHTML=`<b>${meta.name}</b> — 음원 <b>${n}개</b>${del?` · ${del}개 삭제함`:' 발견'} (총 ${fmtDur(dur)}, ${fmt(size)}, 헤더 테이블 영역 ${fmt(meta.table)}, ${meta.mode})<br>목록을 클릭하면 미리 들을 수 있고, 파일명을 더블클릭하면 이름을 바꾸고, ×를 누르면 삭제합니다.`;
+    dlBtn.disabled=!n; playBtn.disabled=!n;
+    undoBtn.disabled=!delStack.length; undoBtn.textContent='삭제 되돌리기'+(delStack.length?' ('+delStack.length+')':'');
+  }
+  function removeItem(i){
+    if(deleted[i]) return;
+    const ed=list.children[i].querySelector('.edit'); if(ed) ed._finish(false);
+    if(i===cur){ player.pause(); list.children[i].classList.remove('playing'); now.style.display='none'; cur=-1; }
+    deleted[i]=true; delStack.push(i); zipBlob=null;
+    list.children[i].classList.add('deleted');
+    updateInfo(); setStatus(names[i]+' 삭제함 — "삭제 되돌리기"로 복구할 수 있습니다.');
+  }
+  undoBtn.addEventListener('click',()=>{
+    const i=delStack.pop(); if(i===undefined) return;
+    deleted[i]=false; zipBlob=null;
+    list.children[i].classList.remove('deleted'); list.children[i].scrollIntoView({block:'nearest'});
+    updateInfo(); setStatus(names[i]+' 되돌림','ok');
+  });
   // ZIP 안에서 이름이 겹치면 " (2)" 등을 붙여 덮어쓰기 방지
-  function zipNames(){
+  function zipNames(idx){
     const used=new Set();
-    return names.map(n=>{
+    return idx.map(i=>{ const n=names[i];
       let f=n+'.mp3', k=2;
       while(used.has(f.toLowerCase())) f=n+' ('+(k++)+').mp3';
       used.add(f.toLowerCase()); return f;
@@ -271,7 +300,7 @@
     dlBtn.disabled=true; setStatus('ZIP 만드는 중…');
     await tick();
     try{
-      if(!zipBlob){ const zn=zipNames(); zipBlob=buildZip(segs.map((s,i)=>({name:zn[i],data:s}))); }
+      if(!zipBlob){ const idx=alive(), zn=zipNames(idx); zipBlob=buildZip(idx.map((i,k)=>({name:zn[k],data:segs[i]}))); }
       const fname=baseName+'_음원.zip';
       if(downloads){
         try{ await downloads.save({filename:fname,data:zipBlob}); setStatus('저장했습니다: '+fname+' ('+fmt(zipBlob.size)+')','ok'); }
@@ -285,9 +314,9 @@
   });
 
   function reset(full){
-    urls.forEach(u=>u&&URL.revokeObjectURL(u)); urls=[]; segs=[]; names=[]; durs=[]; cur=-1; zipBlob=null;
+    urls.forEach(u=>u&&URL.revokeObjectURL(u)); urls=[]; segs=[]; names=[]; durs=[]; deleted=[]; delStack=[]; meta=null; cur=-1; zipBlob=null;
     list.innerHTML=''; info.style.display='none'; now.style.display='none'; player.removeAttribute('src');
-    dlBtn.disabled=true; playBtn.disabled=true; resetBtn.disabled=true; playBtn.dataset.cont='0';
+    dlBtn.disabled=true; playBtn.disabled=true; resetBtn.disabled=true; undoBtn.disabled=true; undoBtn.textContent='삭제 되돌리기'; playBtn.dataset.cont='0';
     if(full){ setStatus(''); prog.style.display='none'; }
   }
   resetBtn.addEventListener('click',()=>reset(true));

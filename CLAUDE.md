@@ -15,6 +15,9 @@
   비교해 오차 1프레임(0.026초) 이내 확인. ffprobe 의 format duration 은 비트레이트 추정이라 비교 기준으로 쓰면 안 됨
 - `names[]` — 각 음원의 파일명(확장자 제외). 기본값 `0001` 형식. 목록 `.num` 더블클릭 →
   `startRename(i)` 인라인 입력 (Enter/포커스 이탈 = 저장, Esc = 취소, 빈칸 = 번호로 복귀)
+- `deleted[]`·`delStack` — × 로 삭제하면 DOM 은 지우지 않고 `.deleted`(display:none)만 붙인다.
+  `list.children[i]` ↔ 인덱스 대응을 유지하기 위해서. `alive()` 가 남은 인덱스, ZIP·`updateInfo`·
+  `play()`(삭제 항목 건너뜀)가 이를 따른다. 되돌리기는 스택(역순). 재생 중인 항목을 지우면 재생 정지
 - `cleanName` — `\ / : * ? " < > |`·제어문자 제거, 끝 `.mp3`·점·공백 제거
 - `zipNames()` — ZIP 안 이름 중복 시 ` (2)` 붙임 (대소문자 무시)
 - `buildZip` — 무압축(STORE) ZIP 직접 생성, UTF-8 파일명 플래그(0x0800)
