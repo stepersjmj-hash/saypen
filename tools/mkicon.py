@@ -1,7 +1,8 @@
 # 로고(28단위: 파란 배경 + 흰 막대 3개, 3번째 안쪽 초록)를 PNG 아이콘으로 그림
 #   icon-180/192/512.png — 홈 화면·앱 바로가기용, 모서리까지 꽉 찬 정사각형 (둥근 모서리는 기기가 깎음)
-#   favicon.png (64px)   — 브라우저 탭용, 둥근 모서리 + 투명 바깥
-# 사용: python tools/mkicon.py icons
+#   ../logo.png (192px)  — favicon(브라우저 탭·네이버 바로가기가 집는 첫 rel=icon), 둥근 모서리 + 투명 바깥.
+#                          64px 처럼 작으면 네이버 바로가기가 버리고 아이콘 없이 만듦 → 크게(kids 는 116px)
+# 사용: python tools/mkicon.py icons   (logo.png 는 icons 의 상위 폴더 = 저장소 루트에 생김)
 import sys
 from PIL import Image, ImageDraw
 out = sys.argv[1]
@@ -18,4 +19,5 @@ def icon(size, rounded=False):
     return im if rounded else im.convert('RGB')   # 홈 화면 아이콘은 투명 없이
 
 for n in (180, 192, 512): icon(n).save(f'{out}/icon-{n}.png', optimize=True)
-icon(64, rounded=True).save(f'{out}/favicon.png', optimize=True)
+import os
+icon(192, rounded=True).save(os.path.join(out, '..', 'logo.png'), optimize=True)
