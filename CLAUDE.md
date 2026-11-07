@@ -6,13 +6,16 @@
 ## 구성
 - `index.html` — 화면·스타일·스크립트 전부 (IIFE 하나 + `<head>` 의 테마 초기화 스크립트)
 - `README.md` — 사용자용 안내
-- `manifest.webmanifest` + `icons/icon-180·192·512.png` — 홈 화면·앱 바로가기 아이콘
-  (아이폰 "홈 화면에 추가"·네이버 앱 바로가기는 favicon 이 아니라 `apple-touch-icon`·매니페스트 아이콘을 찾고,
-  없으면 첫 글자 아이콘으로 대신함). 탭 favicon 은 `<head>` 의 SVG data URI 그대로.
-  - 아이콘은 favicon 과 같은 모양(파란 배경 + 막대 3개, 3번째 초록)을 모서리까지 꽉 채운 정사각형 —
-    둥근 모서리는 기기가 깎음. 내용이 가운데 80% 안에 있어 maskable 로도 씀
+- `manifest.webmanifest` + `icons/icon-180·192·512.png` — 홈 화면·앱 바로가기 아이콘, `icons/favicon.png`(64px) — 탭 아이콘
+  (아이폰 "홈 화면에 추가"·네이버 앱 바로가기는 `apple-touch-icon`·매니페스트 아이콘을 찾고, 못 쓰면 글자 아이콘이나 빈 아이콘)
+  - **아이콘은 전부 PNG 파일** — 예전엔 탭 favicon 을 SVG data URI 로 head 끝에 두었더니 네이버 바로가기가 그걸 집어
+    아이콘 없이 나왔음(2026-11-07). kids 저장소와 같은 구성으로 맞춤: favicon PNG → apple-touch-icon(sizes=180x180) →
+    icon 192·512 → manifest(purpose·maskable 없이 192·512 두 개)
+  - 홈 화면 아이콘은 favicon 과 같은 모양(파란 배경 + 막대 3개, 3번째 초록)을 모서리까지 꽉 채운 정사각형(투명 없음) —
+    둥근 모서리는 기기가 깎음. favicon.png 만 둥근 모서리 + 투명 바깥
   - 로고를 바꾸면 `tools/mkicon.py` 로 다시 생성: `python tools/mkicon.py icons` (Pillow 필요)
   - `<head>` 의 `og:image` 는 Pages 절대 주소 — 카카오톡 등 링크 미리보기용
+  - 바로가기 아이콘은 추가하는 순간 가져가므로, 고친 뒤엔 기존 바로가기를 지우고 새로고침 → 다시 추가해야 함
 
 ## 화면 구조
 - `body.loaded` 유무로 두 상태를 전환. 없으면 `#intro`(드롭 영역·진행바·설명), 있으면 `.app`(워크벤치) + `#pbar`

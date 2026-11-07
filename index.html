@@ -5,18 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>세이펜 추출기 — PIN 음원 추출</title>
 <meta name="description" content="세이펜 .pin 파일에서 MP3 음원을 꺼내 미리 듣고 이름을 바꿔 ZIP으로 저장합니다. 파일은 브라우저 밖으로 전송되지 않습니다.">
-<!-- 홈 화면·앱 바로가기 아이콘 (아이폰·네이버 앱 등은 favicon 대신 이걸 씀), 링크 미리보기 -->
-<link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-<link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#2f6fed">
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<!-- 홈 화면·앱 바로가기(아이폰, 네이버 앱 등)용 아이콘: 파란 배경이 꽉 찬 정사각형 PNG.
+     data: URI(SVG) favicon 을 쓰면 네이버 바로가기가 그걸 집어 아이콘 없이 나옴 → 아이콘은 전부 PNG 파일로 -->
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+<link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="세이펜">
-<meta property="og:type" content="website">
 <meta property="og:title" content="세이펜 추출기 — PIN 음원 추출">
 <meta property="og:description" content="세이펜 .pin 파일에서 MP3 음원을 꺼내 이름을 바꿔 ZIP으로 저장">
-<meta property="og:url" content="https://stepersjmj-hash.github.io/saypen/">
 <meta property="og:image" content="https://stepersjmj-hash.github.io/saypen/icons/icon-512.png">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='8' fill='%232f6fed'/%3E%3Crect x='7.5' y='9.5' width='3' height='9' rx='1.5' fill='%23fff'/%3E%3Crect x='12.5' y='6' width='3' height='16' rx='1.5' fill='%23fff'/%3E%3Crect x='16.5' y='7.5' width='5' height='13' rx='2.5' fill='%23fff'/%3E%3Crect x='17.5' y='8.5' width='3' height='11' rx='1.5' fill='%2316a34a'/%3E%3C/svg%3E">
+<meta property="og:url" content="https://stepersjmj-hash.github.io/saypen/">
+<meta property="og:type" content="website">
 <script>
   // 테마: 저장값 > 시스템 설정
   (function(){ const s=localStorage.getItem('saypen-theme'); document.documentElement.dataset.theme = s || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'); })();
